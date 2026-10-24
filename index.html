@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StockJP</title>
+    <!-- Librería html5-qrcode para el escaneo de códigos de barra / QR -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --surface-color: #1e1e24;
+            --text-color: #ffffff;
+            --text-dim: #adb5bd;
+            --primary-color: #3b82f6;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --border-color: #2a2a35;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease;
+            padding: 8px;
+            min-height: 100vh;
+        }
+
+        /* Cabecera limpia y discreta */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 6px;
+            margin-bottom: 8px;
+            background: var(--surface-color);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        #status-info {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        .btn-local-csv {
+            background: #2d2d3a;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Barra de herramientas superior compacta en una línea */
+        .search-container {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .search-container input {
+            flex: 1;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .search-container button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .search-container .btn-scan {
+            background: #4b5563;
+        }
+
+        /* Contenedor del Escáner Cámara */
+        #scanner-container {
+            display: none;
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 350px;
+            margin: 0 auto;
+            overflow: hidden;
+            border-radius: 6px;
+        }
+
+        .btn-close-scanner {
+            display: block;
+            width: 100%;
+            background: #374151;
+            color: white;
+            border: none;
+            padding: 6px;
+            margin-top: 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        /* Tarjeta de resultado principal */
+        .result-card {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-left: 5px solid #6b7280;
+            display: block;
+        }
+
+        .result-card.available {
+            border-left-color: var(--success-color);
+            background: linear-gradient(135deg, var(--surface-color) 0%, #152e1d 100%);
+        }
+
+        .result-card.out-of-stock {
+            border-left-color: var(--error-color);
+            background: linear-gradient(135deg, var(--surface-color) 0%, #3a1a1a 100%);
+        }
+
+        .result-card .dept {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            margin-bottom: 2px;
+        }
+
+        .result-card .desc {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.25;
+        }
+
+        .result-card .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 6px;
+            margin-bottom: 8px;
+        }
+
+        .result-card .stock-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .available .stock-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .out-of-stock .stock-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        /* Sección Familia (Hermanos) */
+        .family-section {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .family-title {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            padding-left: 2px;
+        }
+
+        /* Tabla responsiva móvil con scroll horizontal suave */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #272730;
+            color: var(--text-dim);
+            padding: 8px 10px;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stock-positive {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .stock-zero {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cabecera Discreta -->
+    <header>
+        <div id="status-info">Actualizando...</div>
+        <label class="btn-local-csv" for="file-input">
+            📁 CSV Local
+        </label>
+        <input type="file" id="file-input" accept=".csv">
+    </header>
+
+    <!-- Barra Superior Ultra-Compacta -->
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Ingresa SKU">
+        <button class="btn-scan" id="start-scan-btn">📷 Escanear</button>
+        <button id="search-btn">🔍 Consultar</button>
+    </div>
+
+    <!-- Contenedor de Cámara Integrado -->
+    <div id="scanner-container">
+        <div id="reader"></div>
+        <button class="btn-close-scanner" id="stop-scan-btn">Cerrar Cámara</button>
+    </div>
+
+    <!-- Bloque de Resultado Principal -->
+    <div id="result-view">
+        <div class="result-card" id="main-card">
+            <div class="dept" id="res-dept">SISTEMA</div>
+            <div class="desc" id="res-desc">Escanea o ingresa un código para verificar disponibilidad.</div>
+            <div class="meta-row">
+                <span id="res-code">Código: --</span>
+                <span id="res-brand">Marca: --</span>
+            </div>
+            <div id="res-badge-container"></div>
+        </div>
+    </div>
+
+    <!-- Tabla Inferior de Familia (Hermanos) -->
+    <div class="family-section">
+        <div class="family-title">📋 Variantes del Mismo Modelo (Familia de Productos)</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Departamento</th>
+                        <th>Código Largo</th>
+                        <th>Marca</th>
+                        <th>Descripción</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="family-table-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 16px;">No se ha realizado ninguna consulta</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBm0VUa2-CmA2aRPVLK7c2Vn_7IpPvZ9hCfBrq6IG0VdGqqq9J4aWXmAmVY6S6ldSOYJszDh25IrpW/pub?gid=0&single=true&output=csv";
+        
+        let inventoryData = [];
+        let html5QrcodeScanner = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchCloudData();
+        });
+
+        async function fetchCloudData() {
+            try {
+                const response = await fetch(GOOGLE_SHEETS_URL);
+                if (!response.ok) throw new Error("Error de red");
+                const csvText = await response.text();
+                processCSV(csvText);
+                updateHeaderStatus("cloud", inventoryData.length);
+            } catch (error) {
+                console.error("Error cargando Google Sheets en segundo plano:", error);
+                document.getElementById('status-info').textContent = "Error al sincronizar nube.";
+            }
+        }
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                processCSV(evt.target.result);
+                updateHeaderStatus("local", inventoryData.length);
+            };
+            reader.readAsText(file);
+        });
+
+        function processCSV(text) {
+            const lines = text.split(/\r?\n/);
+            if (lines.length === 0) return;
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            
+            const indexDept = headers.indexOf("DEPARTAMENTO");
+            const indexLongCode = headers.indexOf("COD_LARGO");
+            const indexModelCode = headers.indexOf("COD_MODELO");
+            const indexBrand = headers.indexOf("MARCA");
+            const indexDesc = headers.indexOf("DESCRIPCION");
+            const indexStock = headers.indexOf("STOCK");
+
+            const parsedData = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) continue;
+
+                let cells = [];
+                let insideQuote = false;
+                let currentCell = "";
+                
+                for (let j = 0; j < line.length; j++) {
+                    let char = line[j];
+                    if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        cells.push(currentCell.trim().replace(/^"|"$/g, ''));
+                        currentCell = "";
+                    } else {
+                        currentCell += char;
+                    }
+                }
+                cells.push(currentCell.trim().replace(/^"|"$/g, ''));
+
+                if (cells.length < headers.length) continue;
+
+                parsedData.push({
+                    department: cells[indexDept] || "SIN DEPARTAMENTO",
+                    cod_largo: cells[indexLongCode] || "",
+                    cod_modelo: cells[indexModelCode] || "",
+                    brand: cells[indexBrand] || "GENÉRICO",
+                    description: cells[indexDesc] || "",
+                    stock: parseInt(cells[indexStock]) || 0
+                });
+            }
+            inventoryData = parsedData;
+        }
+
+        function updateHeaderStatus(source, count) {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            const statusLabel = document.getElementById('status-info');
+            statusLabel.textContent = "Actualizado: " + timeStr + " (" + count + " ítems)";
+        }
+
+        function executeQuery() {
+            const searchInput = document.getElementById('search-input');
+            const skuQuery = searchInput.value.trim();
+
+            if (!skuQuery) return;
+
+            const product = inventoryData.find(item => item.cod_largo === skuQuery || item.cod_modelo === skuQuery);
+            
+            searchInput.value = "";
+
+            renderUIResults(product, skuQuery);
+            
+            fetchCloudData();
+        }
+
+        function renderUIResults(product, searchedCode) {
+            const mainCard = document.getElementById('main-card');
+            const deptEl = document.getElementById('res-dept');
+            const descEl = document.getElementById('res-desc');
+            const codeEl = document.getElementById('res-code');
+            const brandEl = document.getElementById('res-brand');
+            const badgeContainer = document.getElementById('res-badge-container');
+            const tableBody = document.getElementById('family-table-body');
+
+            mainCard.className = "result-card";
+            document.body.style.backgroundColor = "#121214";
+
+            if (product) {
+                deptEl.textContent = product.department;
+                descEl.textContent = product.description;
+                codeEl.innerHTML = "Código: <strong>" + product.cod_largo + "</strong>";
+                brandEl.innerHTML = "Marca: <strong>" + product.brand + "</strong>";
+
+                if (product.stock > 0) {
+                    mainCard.classList.add('available');
+                    document.body.style.backgroundColor = "#0b1f19";
+                    badgeContainer.innerHTML = '<span class="stock-badge">Disponible: ' + product.stock + ' Unid.</span>';
+                } else {
+                    mainCard.classList.add('out-of-stock');
+                    document.body.style.backgroundColor = "#241111";
+                    badgeContainer.innerHTML = '<span class="stock-badge">Agotado (Stock: ' + product.stock + ')</span>';
+                }
+
+                const siblings = inventoryData
+                    .filter(item => item.cod_modelo === product.cod_modelo && product.cod_modelo !== "")
+                    .sort((a, b) => a.cod_largo.localeCompare(b.cod_largo));
+
+                tableBody.innerHTML = "";
+                if (siblings.length > 0) {
+                    siblings.forEach(sib => {
+                        const tr = document.createElement('tr');
+                        const stockStyle = sib.stock > 0 ? "stock-positive" : "stock-zero";
+                        tr.innerHTML = "<td>" + sib.department + "</td>" +
+                                     "<td><strong>" + sib.cod_largo + "</strong></td>" +
+                                     "<td>" + sib.brand + "</td>" +
+                                     "<td style='white-space: normal; max-width: 250px;'>" + sib.description + "</td>" +
+                                     "<td class='" + stockStyle + "'>" + sib.stock + " u.</td>";
+                        tableBody.appendChild(tr);
+                    });
+                } else {
+                    tableBody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: var(--text-dim); padding: 16px;'>No hay variantes para este modelo</td></tr>";
+                }
+
+            } else {
+                deptEl.textContent = "INVENTARIO";
+                descEl.textContent = "El SKU \"" + searchedCode + "\" no existe en la base de datos.";
+                codeEl.innerHTML = "Código: <strong>" + searchedCode + "</strong>";
+                brandEl.innerHTML = "Marca: <strong>--</strong>";
+                mainCard.classList.add('out-of-stock');
+                document.body.style.backgroundColor = "#1a1a1e";
+                badgeContainer.innerHTML = '<span class="stock-badge">No existe el producto</span>';
+
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 16px;">Sin modelo de referencia</td></tr>';
+            }
+        }
+
+        document.getElementById('start-scan-btn').addEventListener('click', () => {
+            const container = document.getElementById('scanner-container');
+            container.style.display = 'block';
+
+            if (!html5QrcodeScanner) {
+                html5QrcodeScanner = new Html5Qrcode("reader");
+            }
+
+            const config = { fps: 15, qrbox: { width: 260, height: 130 } };
+
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    document.getElementById('search-input').value = decodedText;
+                    if (navigator.vibrate) navigator.vibrate(100);
+                    stopScanner();
+                    executeQuery();
+                },
+                (errorMessage) => {}
+            ).catch(err => {
+                console.error("Error iniciando cámara:", err);
+                alert("No se pudo acceder a la cámara trasera.");
+                container.style.display = 'none';
+            });
+        });
+
+        function stopScanner() {
+            if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+                html5QrcodeScanner.stop().then(() => {
+                    document.getElementById('scanner-container').style.display = 'none';
+                }).catch(err => console.error("Error deteniendo escáner:", err));
+            } else {
+                document.getElementById('scanner-container').style.display = 'none';
+            }
+        }
+
+        document.getElementById('stop-scan-btn').addEventListener('click', stopScanner);
+        document.getElementById('search-btn').addEventListener('click', executeQuery);
+        document.getElementById('search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') executeQuery();
+        });
+    </script>
+</body>
+</html>
