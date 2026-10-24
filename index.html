@@ -302,16 +302,14 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Departamento</th>
                         <th>Código Largo</th>
-                        <th>Marca</th>
                         <th>Descripción</th>
                         <th>Stock</th>
                     </tr>
                 </thead>
                 <tbody id="family-table-body">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 16px;">No se ha realizado ninguna consulta</td>
+                        <td colspan="3" style="text-align: center; color: var(--text-dim); padding: 16px;">No se ha realizado ninguna consulta</td>
                     </tr>
                 </tbody>
             </table>
@@ -461,11 +459,10 @@
                     siblings.forEach(sib => {
                         const tr = document.createElement('tr');
                         const stockStyle = sib.stock > 0 ? "stock-positive" : "stock-zero";
-                        tr.innerHTML = "<td>" + sib.department + "</td>" +
-                                     "<td><strong>" + sib.cod_largo + "</strong></td>" +
-                                     "<td>" + sib.brand + "</td>" +
-                                     "<td style='white-space: normal; max-width: 250px;'>" + sib.description + "</td>" +
-                                     "<td class='" + stockStyle + "'>" + sib.stock + " u.</td>";
+                        tr.innerHTML = "<td><strong>" + sib.cod_largo + "</strong></td>" +
+					"<td style='white-space: normal; max-width: 250px;'>" + sib.description + "</td>" +
+ 					"<td class='" + stockStyle + "'>" + sib.stock + " u.</td>";
+
                         tableBody.appendChild(tr);
                     });
                 } else {
